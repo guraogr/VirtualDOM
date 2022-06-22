@@ -1,18 +1,7 @@
-# VirtualDOM-tutorial-starter
-Qiitaで書いた「仮想DOMの作り方」という記事のためのリポジトリです。仮想DOMを作るための環境をセットアップしています。
-## Usage 使い方
+# 概要
 
-```
-git clone https://github.com/UMASHIBA1/VirtualDOM-tutorial-starter.git
-cd .\VirtualDOM-tutorial-starter\
-yarn install
-yarn start
-```
+目的：仮想 DOM の理解を深める<br>
+なぜやるのか：React フレームワークを使うにあたり、仮想 DOM について根本的な理解をしておきたい<br>
+やったこと：TypeScript を使った仮想 DOM の自作<br><br>
 
-## Description 説明
-VirtualDom.tsが仮想DOMの本体です。 
-index.tsで仮想DOMを呼びだしています。 <br>
-VirtualDom.ts is the file implemented virtual DOM. I call virtualDom in index.ts.
-
-## Completed version 完成版
-https://github.com/UMASHIBA1/UMASHIBAVirtualDOM
+参考にしたチュートリアル：https://qiita.com/umashiba/items/e2a9776e6c44a40d2d8f
