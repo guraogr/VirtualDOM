@@ -91,3 +91,77 @@ export const h = (
 
   return thisVNode;
 };
+
+// render関数
+
+// 本物のElementからVNodeを作成するための関数
+const createVNodeFromRealElement = (
+  realElement: HTMLElement
+): VirtualNodeType => {
+  if (realElement.nodeType === TEXT_NODE) {
+    return createTextVNode(realElement.nodeName, realElement);
+  } else {
+    const VNodeChildren: VirtualNodeType[] = [];
+    const childrenLength = realElement.childNodes.length;
+    for (let i = 0; i < childrenLength; i++) {
+      const child = realElement.children.item(i);
+      if (child !== null) {
+        const childVNode = createVNodeFromRealElement(child as HTMLElement);
+        VNodeChildren.push(childVNode);
+      }
+    }
+
+    const props: VirtualNodeType["props"] = {};
+    if (realElement.hasAttributes()) {
+      const attributes = realElement.attributes;
+      const attrLength = attributes.length;
+      for (let i = 0; i < attrLength; i++) {
+        const { name, value } = attributes[i];
+        props[name] = value;
+      }
+    }
+
+    const VNode = createVNode(
+      realElement.nodeName.toLowerCase(),
+      props,
+      VNodeChildren,
+      realElement,
+      null
+    );
+
+    return VNode;
+  }
+};
+
+const renderNode = (
+  parentNode: HTMLElement,
+  realNode: VirtualNodeType["realNode"],
+  oldVNode: VirtualNodeType | null,
+  newVNode: VirtualNodeType
+) => {};
+
+export const render = (
+  realNode: ElementAttachedNeedAttr,
+  newVNode: VirtualNodeType
+) => {
+  if (realNode.parentElement !== null) {
+    let oldVNode: VirtualNodeType | null;
+
+    // realNodeごと追加・更新・削除の処理に入れる
+    const vnodeFromRealElement = createVNodeFromRealElement(realNode);
+    if (realNode.vdom === undefined) {
+      oldVNode = { ...vnodeFromRealElement };
+    } else {
+      oldVNode = realNode.vdom;
+    }
+
+    vnodeFromRealElement.children = [newVNode];
+    newVNode = vnodeFromRealElement;
+
+    renderNode(realNode.parentElement, realNode, oldVNode, newVNode);
+  } else {
+    console.error(
+      "Error! render func does not work, because the realNode does not have parentNode attribute."
+    );
+  }
+};
