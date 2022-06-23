@@ -156,6 +156,48 @@ const renderTextNode = (
   }
 };
 
+const patchProperty = (
+  realNode: ElementAttachedNeedAttr,
+  propName: DOMAttributeName,
+  oldPropValue: any,
+  newPropValue: any
+) => {};
+
+const createRealNodeFromVNode = (VNode: VirtualNodeType) => {
+  let realNode: ElementAttachedNeedAttr | TextAttachedVDom;
+  if (VNode.nodeType === TEXT_NODE) {
+    if (typeof VNode.name === "string") {
+      realNode = document.createTextNode(VNode.name);
+      // NOTE 要素を新しく作成する場合はchildrenに対してcreateRealNodeFromVNodeを再起的に
+      // 呼んでいる関係でここでVNodeとrealNodeの相互参照を作成する
+      VNode.realNode = realNode;
+      realNode.vdom = VNode;
+    } else {
+      console.error(
+        "Error! createRealNodeFromVNode does not work, because rendering nodeType is TEXT_NODE, but VNode.name is not string"
+      );
+      return null;
+    }
+  } else {
+    realNode = document.createElement(VNode.name as string);
+    for (const propName in VNode.props) {
+      patchProperty(realNode, propName, null, VNode.props[propName]);
+    }
+    // NOTE 要素を新しく作成する場合はchildrenに対してcreateRealNodeFromVNodeを再起的に
+    // 呼んでいる関係でここでVNodeとrealNodeの相互参照を作成する
+    VNode.realNode = realNode;
+    realNode.vdom = VNode;
+
+    for (const child of VNode.children) {
+      const realChildNode = createRealNodeFromVNode(child);
+      if (realChildNode !== null) {
+        realNode.append(realChildNode);
+      }
+    }
+  }
+  return realNode;
+};
+
 const renderNode = (
   parentNode: HTMLElement,
   realNode: VirtualNodeType["realNode"],
@@ -170,6 +212,17 @@ const renderNode = (
     oldVNode.nodeType === TEXT_NODE
   ) {
     realNode = renderTextNode(realNode, newVNode);
+  }
+
+  // 要素の追加、削除、もしくは<div>から<span>等、要素の種類自体を変えた時の入れ替え処理
+  else if (oldVNode === null || oldVNode.name !== newVNode.name) {
+    const newRealNode = createRealNodeFromVNode(newVNode);
+    if (newRealNode !== null) {
+      parentNode.insertBefore(newRealNode, realNode);
+    }
+    if (oldVNode !== null && oldVNode.realNode !== null) {
+      parentNode.removeChild(oldVNode.realNode);
+    }
   }
 };
 
