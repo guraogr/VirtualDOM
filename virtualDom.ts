@@ -133,12 +133,45 @@ const createVNodeFromRealElement = (
   }
 };
 
+const renderTextNode = (
+  realNode: VirtualNodeType["realNode"],
+  newVNode: VirtualNodeType
+) => {
+  // Text要素の更新、消去処理
+  if (realNode !== null) {
+    if (typeof newVNode.name === "string") {
+      realNode.nodeValue = newVNode.name;
+      return realNode;
+    } else {
+      console.error(
+        "Error! renderTextNode does not work, because rendering nodeType is TEXT_NODE, but newNode.name is not string."
+      );
+      return realNode;
+    }
+  } else {
+    console.error(
+      "Error! renderTextNode does not work, because rendering nodeType is TEXT_NODE, but realNode is null. can't add text to node"
+    );
+    return realNode;
+  }
+};
+
 const renderNode = (
   parentNode: HTMLElement,
   realNode: VirtualNodeType["realNode"],
   oldVNode: VirtualNodeType | null,
   newVNode: VirtualNodeType
-) => {};
+) => {
+  // 以前と変わっていない場合何もしない処理
+  if (newVNode === oldVNode) {
+  } else if (
+    oldVNode !== null &&
+    newVNode.nodeType === TEXT_NODE &&
+    oldVNode.nodeType === TEXT_NODE
+  ) {
+    realNode = renderTextNode(realNode, newVNode);
+  }
+};
 
 export const render = (
   realNode: ElementAttachedNeedAttr,
