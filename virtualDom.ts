@@ -156,12 +156,51 @@ const renderTextNode = (
   }
 };
 
+// NOTE ElementAttachedNeedAttr.handlersに存在する関数を呼びだすだけの関数
+// イベント追加時にこれをaddEventListenerする事でイベント変更時にElementAttachedNeedAttr.handlersの関数を変えるだけで良い
+const listenerFunc = (event: Event) => {
+  const realNode = event.currentTarget as ElementAttachedNeedAttr;
+  if (realNode.eventHandlers !== undefined) {
+    realNode.eventHandlers[event.type](event);
+  }
+};
+
 const patchProperty = (
   realNode: ElementAttachedNeedAttr,
   propName: DOMAttributeName,
   oldPropValue: any,
   newPropValue: any
-) => {};
+) => {
+  // NOTE key属性は一つのrealNodeに対して固有でないといけないから変更しない
+  if (propName === "key") {
+  }
+  // イベントリスナー属性
+  else if (propName[0] === "o" && propName[1] === "n") {
+    const eventName = propName.slice(2).toLowerCase();
+
+    if (realNode.eventHandlers === undefined) {
+      realNode.eventHandlers = {};
+    }
+
+    realNode.eventHandlers[eventName] = newPropValue;
+
+    if (
+      newPropValue === null ||
+      newPropValue === undefined ||
+      newPropValue === false
+    ) {
+      realNode.removeEventListener(eventName, listenerFunc);
+    } else if (!oldPropValue) {
+      realNode.addEventListener(eventName, listenerFunc);
+    }
+  }
+  // 属性を削除する場合
+  else if (newPropValue === null || newPropValue === undefined) {
+    realNode.removeAttribute(propName);
+  } else {
+    realNode.setAttribute(propName, newPropValue);
+  }
+};
 
 const createRealNodeFromVNode = (VNode: VirtualNodeType) => {
   let realNode: ElementAttachedNeedAttr | TextAttachedVDom;
