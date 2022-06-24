@@ -237,6 +237,57 @@ const createRealNodeFromVNode = (VNode: VirtualNodeType) => {
   return realNode;
 };
 
+const mergeProperties = (oldProps: DOMAttributes, newProp: DOMAttributes) => {
+  const mergedProperties: DOMAttributes = {};
+
+  for (const propName in oldProps) {
+    mergedProperties[propName] = oldProps[propName];
+  }
+
+  for (const propName in newProp) {
+    mergedProperties[propName] = newProp[propName];
+  }
+
+  return mergedProperties;
+};
+
+// 渡された要素は更新するがそのchildrenは更新しない
+const updateOnlyThisNode = (
+  realNode: VirtualNodeType["realNode"],
+  oldVNode: VirtualNodeType,
+  newVNode: VirtualNodeType
+) => {
+  if (realNode !== null) {
+    for (const propName in mergeProperties(oldVNode.props, newVNode.props)) {
+      let compareValue;
+      // inputやcheckboxなどの入力系
+      if (propName === "value" || propName === "checked") {
+        compareValue = (realNode as HTMLInputElement)[propName];
+      } else if (propName === "selected") {
+        // 型の関係でselectedだけvalue, checkedと別で比較
+        compareValue = (realNode as HTMLOptionElement)[propName];
+      } else {
+        compareValue = oldVNode.props[propName];
+      }
+
+      if (compareValue !== newVNode.props) {
+        patchProperty(
+          realNode as ElementAttachedNeedAttr,
+          propName,
+          oldVNode.props[propName],
+          newVNode.props[propName]
+        );
+      }
+    }
+  } else {
+    console.error(
+      `Error! updateOnlyThisNode does not work, because realNode is null. \n
+      [info]: oldVNode.name ${oldVNode.name}, newVNode.name: ${newVNode.name}`
+    );
+  }
+  return realNode;
+};
+
 const renderNode = (
   parentNode: HTMLElement,
   realNode: VirtualNodeType["realNode"],
@@ -262,6 +313,11 @@ const renderNode = (
     if (oldVNode !== null && oldVNode.realNode !== null) {
       parentNode.removeChild(oldVNode.realNode);
     }
+  }
+  // 要素の更新
+  else {
+    // 要素の更新処理
+    realNode = updateOnlyThisNode(realNode, oldVNode, newVNode);
   }
 };
 
