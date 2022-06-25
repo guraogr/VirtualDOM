@@ -318,7 +318,157 @@ const renderNode = (
   else {
     // 要素の更新処理
     realNode = updateOnlyThisNode(realNode, oldVNode, newVNode);
+    if (realNode !== null) {
+      // 子要素の作成・削除・更新処理
+      let oldChildNowIndex = 0;
+      let newChildNowIndex = 0;
+      const oldChildrenLength = oldVNode.children.length;
+      const newChildrenLength = newVNode.children.length;
+
+      // 子要素の追加や削除処理のためにoldVNodeでkeyがある要素の連想配列が必要なため作成
+      let hasKeyOldChildren: { [key in KeyAttribute]: VirtualNodeType } = {};
+      for (const child of oldVNode.children) {
+        const childKey = child.key;
+        if (childKey !== null) {
+          hasKeyOldChildren[childKey] = child;
+        }
+      }
+
+      // 同じく子要素の追加や削除処理の為に必要な為作成
+      const renderedNewChildren: { [key in KeyAttribute]: "isRendered" } = {};
+
+      while (newChildNowIndex < newChildrenLength) {
+        let oldChildVNode: VirtualNodeType | null;
+        let oldKey: string | number | null;
+        if (oldVNode.children[oldChildNowIndex] === undefined) {
+          oldChildVNode = null;
+          oldKey = null;
+        } else {
+          oldChildVNode = oldVNode.children[oldChildNowIndex];
+          oldKey = oldChildVNode.key;
+        }
+        const newChildVNode = newVNode.children[newChildNowIndex];
+        const newKey = newChildVNode.key;
+
+        // 既にrenderされているoldChildVNodeをスキップする処理
+        if (oldKey !== null && renderedNewChildren[oldKey] === "isRendered") {
+          oldChildNowIndex++;
+          continue;
+        }
+
+        // NODE keyを持っていない削除するべき要素を削除する処理
+        // ※ keyを持っている削除するべき要素は最後にまとめて削除する
+        if (
+          newKey !== null &&
+          oldChildVNode !== null &&
+          oldChildVNode.children[oldChildNowIndex + 1] !== undefined &&
+          newKey === oldChildVNode.children[oldChildNowIndex + 1].key
+        ) {
+          // keyのない要素は以前のrenderの時と同じ位置になかったら削除する
+          if (oldKey === null) {
+            realNode.removeChild(
+              oldChildVNode.realNode as ElementAttachedNeedAttr
+            );
+          }
+          oldChildNowIndex++;
+          continue;
+        }
+
+        // keyを持っていない子要素の更新処理
+        if (newKey === null) {
+          if (oldKey === null) {
+            renderNode(
+              realNode as ElementAttachedNeedAttr,
+              oldChildVNode === null ? null : oldChildVNode.realNode,
+              oldChildVNode,
+              newChildVNode
+            );
+            newChildNowIndex++;
+          }
+          oldChildNowIndex++;
+        } else {
+          // 以前のrender時とkeyが変わっていなかった場合、更新
+          if (oldChildVNode !== null && oldKey === newKey) {
+            const childRealNode = oldChildVNode.realNode;
+            renderNode(
+              realNode as ElementAttachedNeedAttr,
+              childRealNode,
+              oldChildVNode,
+              newChildVNode
+            );
+            renderedNewChildren[newKey] = "isRendered";
+            oldChildNowIndex++;
+          } else {
+            const previousRenderValue = hasKeyOldChildren[newKey];
+            // 以前のrender時には既にこのkeyを持つ要素が存在していた場合
+            if (
+              previousRenderValue !== null &&
+              previousRenderValue !== undefined
+            ) {
+              renderNode(
+                realNode as ElementAttachedNeedAttr,
+                previousRenderValue.realNode,
+                previousRenderValue,
+                newChildVNode
+              );
+              renderedNewChildren[newKey] = "isRendered";
+            }
+            // keyを持つ要素の追加処理
+            else {
+              renderNode(
+                realNode as ElementAttachedNeedAttr,
+                null,
+                null,
+                newChildVNode
+              );
+              renderedNewChildren[newKey] = "isRendered";
+            }
+
+            newChildNowIndex++;
+          }
+        }
+
+        // 前のwhile処理で利用されなかった到達しなかったoldVNodeのindexの内keyを持っていないモノを削除
+        while (oldChildNowIndex < oldChildrenLength) {
+          const unreachOldVNode = oldVNode.children[oldChildNowIndex];
+          if (
+            unreachOldVNode.key === null ||
+            unreachOldVNode.key === undefined
+          ) {
+            if (unreachOldVNode.realNode !== null) {
+              realNode.removeChild(unreachOldVNode.realNode);
+            }
+          }
+          oldChildNowIndex++;
+        }
+
+        // keyをもつoldVNodeの子要素の中で新しいVNodeでは削除されているものを削除
+        for (const oldKey in hasKeyOldChildren) {
+          if (
+            renderedNewChildren[oldKey] === null ||
+            renderedNewChildren[oldKey] === undefined
+          ) {
+            const willRemoveNode = hasKeyOldChildren[oldKey].realNode;
+            if (willRemoveNode !== null) {
+              realNode.removeChild(willRemoveNode);
+            }
+          }
+        }
+      }
+    } else {
+      console.error("renderNode does not work well, because realNode is null.");
+    }
   }
+
+  if (realNode !== null) {
+    // NOTE newVNodeに対応する実際の要素を代入する。これを次の更新の際に使う
+    newVNode.realNode = realNode;
+    // NOTE 今後更新する際に差分を検出する為実際のHTML要素に対してvdomプロパティを加える
+    // このvdomプロパティが次の更新の際のoldVNodeになる
+    realNode.vdom = newVNode;
+  }
+
+  return realNode;
 };
 
 export const render = (
