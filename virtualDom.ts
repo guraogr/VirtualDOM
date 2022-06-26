@@ -35,12 +35,9 @@ interface VirtualNodeType {
   key: KeyAttribute | null; // keyを表す
 }
 
-// ヘルパー関数
-
-// VNodeを作成する関数
-
 const TEXT_NODE = 3;
 
+// VNodeを作成する関数
 const createVNode = (
   name: VirtualNodeType["name"],
   props: VirtualNodeType["props"],
@@ -57,6 +54,7 @@ const createVNode = (
   key: key === undefined ? null : key,
 });
 
+// テキストのVNodeを作成する関数
 const createTextVNode = (
   name: string,
   realNode?: VirtualNodeType["realNode"]
@@ -70,6 +68,7 @@ export const h = (
   children: (VirtualNodeType | string)[],
   realNode?: VirtualNodeType["realNode"]
 ) => {
+  // 渡ってきたchildrenを元に、VNodeを作成してVNodeChildrenに格納していく
   const VNodeChildren: VirtualNodeType[] = [];
   for (const child of children) {
     if (typeof child === "string") {
@@ -80,10 +79,11 @@ export const h = (
     }
   }
 
+  // 渡ってきた引数と、作成したVNodeChildrenを元にVNodeを作成
   const thisVNode = createVNode(
     name,
     props,
-    VNodeChildren,
+    VNodeChildren, // 作成されたVNodeChildren
     realNode,
     null,
     props.key
@@ -92,25 +92,39 @@ export const h = (
   return thisVNode;
 };
 
-// render関数
+// render関数: 引数を渡すと要素の追加や更新をしてくれる
+
+// ※ こんな感じで使う
+// const node = document.getElementById("app");
+// render(
+//   node,
+//   h("div", {}, [
+//     h("h1", {}, ["Hello World"]), //タダの文字を表したい場合はh関数のchildrenに文字のみ渡す
+//     );
 
 // 本物のElementからVNodeを作成するための関数
 const createVNodeFromRealElement = (
   realElement: HTMLElement
 ): VirtualNodeType => {
+  // 引数がテキストならTextVNodeを作成
   if (realElement.nodeType === TEXT_NODE) {
     return createTextVNode(realElement.nodeName, realElement);
-  } else {
+  }
+  // 引数が要素ならVNode(要素)を作成
+  else {
     const VNodeChildren: VirtualNodeType[] = [];
     const childrenLength = realElement.childNodes.length;
+
+    // realElement(引数)のchildrenを、新たな配列に格納する
     for (let i = 0; i < childrenLength; i++) {
-      const child = realElement.children.item(i);
+      const child = realElement.children.item(i); // item(): indexを指定してNodeオブジェクトを取得
       if (child !== null) {
         const childVNode = createVNodeFromRealElement(child as HTMLElement);
         VNodeChildren.push(childVNode);
       }
     }
 
+    // realElement(引数)のattributesを、定数「props」に格納する
     const props: VirtualNodeType["props"] = {};
     if (realElement.hasAttributes()) {
       const attributes = realElement.attributes;
@@ -486,6 +500,7 @@ export const render = (
       oldVNode = realNode.vdom;
     }
 
+    // 引数で指定した新しいVNodeを代入
     vnodeFromRealElement.children = [newVNode];
     newVNode = vnodeFromRealElement;
 
